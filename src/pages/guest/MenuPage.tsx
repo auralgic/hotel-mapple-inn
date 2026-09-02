@@ -5,7 +5,7 @@ import { useCart } from '../../context/CartContext';
 import { validateRoomToken, generateRoomToken } from '../../lib/qr';
 import { formatCurrency } from '../../lib/formatters';
 import { MenuItem, ItemVariant } from '../../types';
-import { Search, Utensils, ShoppingBag, Plus, Minus, Check, AlertCircle, Info, ChevronRight, Sparkles } from 'lucide-react';
+import { Search, Utensils, ShoppingBag, Plus, Minus, Check, AlertCircle, Info, ChevronRight, Sparkles, QrCode } from 'lucide-react';
 
 export const MenuPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -76,6 +76,39 @@ export const MenuPage: React.FC = () => {
     const currentQty = getItemQuantityInCart(item, variant);
     updateQuantity(item.id, currentQty - 1, variant?.name);
   };
+
+  const urlRoom = searchParams.get('room');
+  const hasValidRoomParam = Boolean(urlRoom || (roomNumber && roomNumber !== '101' && token));
+
+  // Security Gate: Digital In-Room Dining is strictly accessible only via room QR codes
+  if (!hasValidRoomParam) {
+    return (
+      <div className="min-h-screen bg-[#0d0c0b] text-white flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-[#181614] border border-neutral-800 p-8 text-center space-y-4 shadow-2xl">
+          <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+            <QrCode className="w-8 h-8" />
+          </div>
+          <span className="text-[11px] font-bold text-amber-500 uppercase tracking-widest block">
+            RESIDENT GUESTS ONLY
+          </span>
+          <h2 className="text-xl sm:text-2xl font-bold font-serif text-white">
+            Scan Room QR Code to Order
+          </h2>
+          <p className="text-xs text-neutral-400 leading-relaxed font-normal">
+            In-Room dining is exclusively reserved for in-house guests of Hotel Mapple Inn. Please scan the QR code located on your room desk (Floors 2 & 3: Rooms 201–208, 301–308) to access your room's digital menu.
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/"
+              className="bg-amber-600 hover:bg-amber-500 text-neutral-950 font-bold px-6 py-2.5 text-xs uppercase tracking-wider inline-block transition cursor-pointer"
+            >
+              Return to Hotel Website
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fcfaf7] pb-28">

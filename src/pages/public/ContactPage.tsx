@@ -68,7 +68,7 @@ export const ContactPage: React.FC = () => {
                     <MapPin className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
                     <div>
                       <strong className="block text-neutral-950 font-bold mb-0.5">Physical Address:</strong>
-                      <span>Plot No. 408-409, Nirman Nagar, Mansarovar, Jaipur, Rajasthan 302020</span>
+                      <span>{settings.address || 'Plot No. 408-409, Nirman Nagar, Mansarovar, Jaipur, Rajasthan 302020'}</span>
                       <div className="mt-1 text-xs text-amber-900 font-semibold bg-amber-50 p-2 border border-amber-200">
                         <strong>Google Plus Code:</strong> VQQ2+3G Jaipur, Rajasthan
                       </div>
@@ -79,8 +79,8 @@ export const ContactPage: React.FC = () => {
                     <Phone className="w-5 h-5 text-amber-700 shrink-0" />
                     <div>
                       <strong className="block text-neutral-950 font-bold">Front Desk & WhatsApp:</strong>
-                      <a href="tel:9680131232" className="text-amber-800 font-bold hover:underline">
-                        +91 96801 31232
+                      <a href={`tel:${(settings.phone || '9680131232').replace(/[^0-9+]/g, '')}`} className="text-amber-800 font-bold hover:underline">
+                        {settings.phone || '+91 96801 31232'}
                       </a>
                     </div>
                   </div>
@@ -89,7 +89,7 @@ export const ContactPage: React.FC = () => {
                     <Mail className="w-5 h-5 text-amber-700 shrink-0" />
                     <div>
                       <strong className="block text-neutral-950 font-bold">Direct Email:</strong>
-                      <span className="text-neutral-700">contact@mappleinn.com</span>
+                      <span className="text-neutral-700">{settings.email || 'contact@mappleinn.com'}</span>
                     </div>
                   </div>
 
@@ -97,7 +97,7 @@ export const ContactPage: React.FC = () => {
                     <Clock className="w-5 h-5 text-amber-700 shrink-0" />
                     <div>
                       <strong className="block text-neutral-950 font-bold">Check-In / Out Timings:</strong>
-                      <span>Check-In: 12:00 PM • Check-Out: 11:00 AM (24/7 Front Desk)</span>
+                      <span>Check-In: {settings.checkInTime || '12:00 PM'} • Check-Out: {settings.checkOutTime || '11:00 AM'} (24/7 Front Desk)</span>
                     </div>
                   </div>
                 </div>

@@ -64,8 +64,11 @@ export interface Booking {
   booking_number: string;
   guest_id: string;
   guest?: Guest;
-  room_id: string;
+  room_id?: string;
   room?: Room;
+  room_type_id?: string;
+  room_type?: RoomType;
+  allotted_room_number?: string;
   check_in: string;
   check_out: string;
   adults: number;

@@ -8,7 +8,7 @@ interface MarriottNavbarProps {
 }
 
 export const MarriottNavbar: React.FC<MarriottNavbarProps> = ({ onOpenBookingModal }) => {
-  const { mediaConfig } = useHotelData();
+  const { mediaConfig, settings } = useHotelData();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -66,16 +66,16 @@ export const MarriottNavbar: React.FC<MarriottNavbarProps> = ({ onOpenBookingMod
           <div className="hidden md:flex items-center space-x-4 shrink-0 whitespace-nowrap">
             {/* Direct Phone */}
             <a
-              href="tel:9680131232"
+              href={`tel:${(settings.phone || '9680131232').replace(/[^0-9+]/g, '')}`}
               className="flex items-center space-x-1.5 text-xs text-neutral-700 hover:text-neutral-950 transition whitespace-nowrap"
             >
               <Phone className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-              <span className="whitespace-nowrap">9680131232</span>
+              <span className="whitespace-nowrap">{settings.phone || '9680131232'}</span>
             </a>
 
             {/* Direct WhatsApp */}
             <a
-              href="https://wa.me/919680131232?text=Hello%20Hotel%20Mapple%20Inn!%20I%20would%20like%20to%20inquire%20about%20a%20stay."
+              href={`https://wa.me/${(settings.whatsapp || '919680131232').replace(/[^0-9]/g, '')}?text=Hello%20Hotel%20Mapple%20Inn!%20I%20would%20like%20to%20inquire%20about%20a%20stay.`}
               target="_blank"
               rel="noreferrer"
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2.5 text-xs flex items-center space-x-1.5 transition shadow-sm whitespace-nowrap rounded-none shrink-0"

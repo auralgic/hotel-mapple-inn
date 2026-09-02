@@ -12,8 +12,12 @@ export const DecisionRoomGrid: React.FC<{
   onDirectBook: (roomTypeId: string) => void;
   onOpenMatcherQuiz?: () => void;
 }> = ({ onDirectBook, onOpenMatcherQuiz }) => {
-  const { mediaConfig } = useHotelData();
+  const { mediaConfig, rooms } = useHotelData();
   const [selectedDrawerRoom, setSelectedDrawerRoom] = useState<RoomCategoryData | null>(null);
+
+  const deluxePrice = rooms.find(r => r.room_type_id === 'rt-deluxe')?.room_type?.base_price || 2200;
+  const superDeluxePrice = rooms.find(r => r.room_type_id === 'rt-super-deluxe')?.room_type?.base_price || 2800;
+  const executivePrice = rooms.find(r => r.room_type_id === 'rt-executive')?.room_type?.base_price || 3800;
 
   const roomCategories: RoomCategoryData[] = [
     {
@@ -21,7 +25,7 @@ export const DecisionRoomGrid: React.FC<{
       slug: 'deluxe-room',
       name: 'Deluxe Room',
       tagline: 'Perfect for couples & business travellers',
-      price: 2200,
+      price: deluxePrice,
       size: '260 sq ft',
       occupancy: '2 Guests',
       bed: 'King Bed',
@@ -43,7 +47,7 @@ export const DecisionRoomGrid: React.FC<{
       slug: 'super-deluxe-room',
       name: 'Super Deluxe Balcony Room',
       tagline: 'Spacious layout with scenic private balcony',
-      price: 2800,
+      price: superDeluxePrice,
       size: '320 sq ft',
       occupancy: '3 Guests',
       bed: 'King Bed + Extra Mat',
@@ -65,7 +69,7 @@ export const DecisionRoomGrid: React.FC<{
       slug: 'executive-suite',
       name: 'Executive Master Suite',
       tagline: 'Top-floor luxury with separate living lounge',
-      price: 3800,
+      price: executivePrice,
       size: '480 sq ft',
       occupancy: '4 Guests',
       bed: 'King Master + Sofa Lounge',

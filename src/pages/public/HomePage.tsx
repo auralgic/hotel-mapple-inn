@@ -5,7 +5,6 @@ import { HeroAmenitiesStrip } from '../../components/public/HeroAmenitiesStrip';
 import { DecisionRoomGrid } from '../../components/public/DecisionRoomGrid';
 import { RoomMatcherQuiz } from '../../components/public/RoomMatcherQuiz';
 import { DirectBookingPerks } from '../../components/public/DirectBookingPerks';
-import { EditorialDining } from '../../components/public/EditorialDining';
 import { RooftopExperience } from '../../components/public/RooftopExperience';
 import { InteractiveTransitMap } from '../../components/public/InteractiveTransitMap';
 import { MasonryGallery } from '../../components/public/MasonryGallery';
@@ -55,10 +54,7 @@ export const HomePage: React.FC = () => {
       {/* 05 — OPEN-AIR SKYLINE ROOFTOP & EVENING CAFE */}
       <RooftopExperience />
 
-      {/* 06 — FRESH IN-HOUSE KITCHEN & ALL-DAY DINING */}
-      <EditorialDining />
-
-      {/* 07 — INTERACTIVE JAIPUR TRANSIT & EXACT HOTEL MAPPLE INN PIN MAP */}
+      {/* 06 — INTERACTIVE JAIPUR TRANSIT & EXACT HOTEL MAPPLE INN PIN MAP */}
       <InteractiveTransitMap />
 
       {/* 08 — MOMENTS & SPACES PHOTO GALLERY (Strict 0px Corners) */}

@@ -4,7 +4,7 @@ import { Phone, MessageSquare, MapPin, Navigation, ExternalLink } from 'lucide-r
 import { useHotelData } from '../../context/HotelDataContext';
 
 export const MarriottFooter: React.FC = () => {
-  const { mediaConfig } = useHotelData();
+  const { mediaConfig, settings } = useHotelData();
 
   return (
     <footer className="bg-[#121110] text-white border-t border-neutral-800 pt-12 sm:pt-16 pb-12 overflow-hidden w-full">
@@ -44,21 +44,21 @@ export const MarriottFooter: React.FC = () => {
 
             <div className="pt-2 flex flex-wrap items-center gap-2 sm:gap-3">
               <a
-                href="https://wa.me/919680131232"
+                href={`https://wa.me/${(settings.whatsapp || '919680131232').replace(/[^0-9]/g, '')}`}
                 target="_blank"
                 rel="noreferrer"
                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3.5 sm:px-4 py-2 text-xs flex items-center space-x-1.5 transition shadow-sm rounded-none whitespace-nowrap"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>WhatsApp: 9680131232</span>
+                <span>WhatsApp: {settings.whatsapp || '9680131232'}</span>
               </a>
 
               <a
-                href="tel:9680131232"
+                href={`tel:${(settings.phone || '9680131232').replace(/[^0-9+]/g, '')}`}
                 className="bg-[#1f1e1c] hover:bg-[#2b2926] text-neutral-200 border border-neutral-700 font-semibold px-3 sm:px-3.5 py-2 text-xs transition flex items-center space-x-1.5 rounded-none whitespace-nowrap"
               >
                 <Phone className="w-3.5 h-3.5 text-amber-400" />
-                <span>9680131232</span>
+                <span>{settings.phone || '9680131232'}</span>
               </a>
             </div>
           </div>
@@ -85,9 +85,6 @@ export const MarriottFooter: React.FC = () => {
                 <Link to="/rooms/executive-suite" className="hover:text-white transition">Executive Suite</Link>
               </li>
               <li>
-                <Link to="/order" className="hover:text-white transition">In-Room Dining</Link>
-              </li>
-              <li>
                 <Link to="/contact" className="hover:text-white transition">Contact & Location</Link>
               </li>
             </ul>
@@ -102,7 +99,7 @@ export const MarriottFooter: React.FC = () => {
               <p className="flex items-start space-x-2">
                 <MapPin className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <span className="break-words">
-                  Plot No. 408-409, Nirman Nagar, Mansarovar, Jaipur, Rajasthan - 302020
+                  {settings.address || 'Plot No. 408-409, Nirman Nagar, Mansarovar, Jaipur, Rajasthan - 302020'}
                 </span>
               </p>
               <div className="bg-[#1a1816] p-2.5 rounded-none border border-neutral-800 text-[11px] text-amber-300">
@@ -110,7 +107,7 @@ export const MarriottFooter: React.FC = () => {
               </div>
               <p className="flex items-center space-x-2">
                 <Phone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>+91 96801 31232</span>
+                <span>{settings.phone || '+91 96801 31232'}</span>
               </p>
             </div>
 

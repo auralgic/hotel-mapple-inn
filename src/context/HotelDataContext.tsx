@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   Room,
+  RoomType,
   RoomStatus,
   MenuCategory,
   MenuItem,
@@ -18,6 +19,7 @@ import {
 import {
   INITIAL_SETTINGS,
   INITIAL_ROOMS,
+  INITIAL_ROOM_TYPES,
   INITIAL_CATEGORIES,
   INITIAL_MENU_ITEMS,
   INITIAL_ORDERS,
@@ -78,10 +80,20 @@ interface HotelDataContextType {
   verifyPayment: (paymentId: string, staffName: string) => void;
   rejectPayment: (paymentId: string, reason: string, staffName: string) => void;
 
+  // Room Types & Inventory Engine
+  roomTypes: RoomType[];
+  checkAvailability: (checkIn: string, checkOut: string, roomTypeId?: string) => {
+    available: boolean;
+    remainingCount: number;
+    totalRooms: number;
+    isSoldOut: boolean;
+  };
+
   // Bookings & Operations
   bookings: Booking[];
   createBooking: (bookingData: Omit<Booking, 'id' | 'booking_number'>) => Booking;
-  checkInGuest: (bookingId: string, guestDetails?: any) => void;
+  allotRoomToBooking: (bookingId: string, roomId: string) => void;
+  checkInGuest: (bookingId: string, allottedRoomId?: string, guestDetails?: any) => void;
   checkOutGuest: (bookingId: string) => void;
   getBookingById: (bookingId: string) => Booking | undefined;
   getFolioForBooking: (bookingId: string) => FolioStay | null;
@@ -129,6 +141,8 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const saved = localStorage.getItem(STORAGE_KEYS.ROOMS);
     return saved ? JSON.parse(saved) : INITIAL_ROOMS;
   });
+
+  const [roomTypes] = useState<RoomType[]>(INITIAL_ROOM_TYPES);
 
   // 3. Categories & Menu Items
   const [categories, setCategories] = useState<MenuCategory[]>(() => {
@@ -264,10 +278,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     fetchCloudData();
 
-    // 1. Live 4-second polling heartbeat (Guarantees multi-device sync even over mobile/cellular connections)
-    const heartbeat = setInterval(fetchCloudData, 4000);
-
-    // 2. Real-time WebSocket subscriptions across all devices
+    // Real-time WebSocket subscriptions across all devices (non-blocking, triggers only on real cloud events)
     const channel = client
       .channel('hotel_mapple_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
@@ -288,7 +299,6 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .subscribe();
 
     return () => {
-      clearInterval(heartbeat);
       client.removeChannel(channel);
     };
   }, []);
@@ -780,41 +790,119 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return newBooking;
   }, [logAudit]);
 
-  const checkInGuest = useCallback((bookingId: string, guestDetails?: any) => {
+  // Dynamic Room Availability Engine (Evaluates actual date ranges across existing bookings)
+  const checkAvailability = useCallback((checkInDate: string, checkOutDate: string, roomTypeId?: string) => {
+    const matchingRooms = roomTypeId && roomTypeId !== 'all'
+      ? rooms.filter(r => r.room_type_id === roomTypeId)
+      : rooms;
+    const totalRooms = matchingRooms.length;
+
+    const overlappingBookings = bookings.filter(b => {
+      if (b.status === 'cancelled' || b.status === 'checked_out') return false;
+      if (roomTypeId && roomTypeId !== 'all') {
+        const matchesType = (b.room_type_id === roomTypeId) || (b.room?.room_type_id === roomTypeId);
+        if (!matchesType) return false;
+      }
+      return b.check_in < checkOutDate && b.check_out > checkInDate;
+    });
+
+    const bookedCount = overlappingBookings.length;
+    const remainingCount = Math.max(0, totalRooms - bookedCount);
+    const isSoldOut = remainingCount === 0;
+
+    return {
+      available: !isSoldOut,
+      remainingCount,
+      totalRooms,
+      isSoldOut,
+    };
+  }, [rooms, bookings]);
+
+  // Allot Room to Booking (Front Desk assigns physical room)
+  const allotRoomToBooking = useCallback((bookingId: string, roomId: string) => {
+    const physicalRoom = rooms.find(r => r.id === roomId);
+    if (!physicalRoom) return;
+
     setBookings(prev =>
       prev.map(b => {
         if (b.id === bookingId) {
-          logAudit('CHECK_IN_GUEST', 'BOOKING', b.booking_number, { room_id: b.room_id });
-          return { ...b, status: 'checked_in', updated_at: new Date().toISOString() };
+          logAudit('ALLOT_ROOM', 'BOOKING', b.booking_number, { room_id: roomId, room_number: physicalRoom.room_number });
+          return {
+            ...b,
+            room_id: roomId,
+            room: physicalRoom,
+            allotted_room_number: physicalRoom.room_number,
+            updated_at: new Date().toISOString(),
+          };
         }
         return b;
       })
     );
 
-    // Update Room to Occupied
-    const booking = bookings.find(b => b.id === bookingId);
-    if (booking) {
-      setRooms(prev =>
-        prev.map(r => {
-          if (r.id === booking.room_id) {
-            return {
-              ...r,
-              status: 'occupied',
-              current_guest: {
-                name: booking.guest?.name || guestDetails?.name || 'Guest',
-                phone: booking.guest?.phone || guestDetails?.phone || '',
-                check_in: new Date().toISOString(),
-                check_out: booking.check_out,
-                booking_id: booking.id,
-              },
-            };
-          }
-          return r;
-        })
-      );
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('bookings').update({ room_id: roomId, updated_at: new Date().toISOString() }).eq('id', bookingId).then();
     }
-  }, [bookings, logAudit]);
+  }, [rooms, logAudit]);
 
+  // Check In Guest (Ensures room is allotted, marks occupied, sets guest details)
+  const checkInGuest = useCallback((bookingId: string, allottedRoomId?: string, guestDetails?: any) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+
+    const targetRoomId = allottedRoomId || booking.room_id;
+    if (!targetRoomId) {
+      alert('Please allot an available room before checking in the guest.');
+      return;
+    }
+
+    const physicalRoom = rooms.find(r => r.id === targetRoomId);
+
+    // 1. Update Booking status
+    setBookings(prev =>
+      prev.map(b => {
+        if (b.id === bookingId) {
+          logAudit('CHECK_IN_GUEST', 'BOOKING', b.booking_number, { room_id: targetRoomId });
+          return {
+            ...b,
+            room_id: targetRoomId,
+            room: physicalRoom || b.room,
+            allotted_room_number: physicalRoom?.room_number || b.allotted_room_number,
+            status: 'checked_in',
+            updated_at: new Date().toISOString(),
+          };
+        }
+        return b;
+      })
+    );
+
+    // 2. Mark physical room as occupied
+    setRooms(prev =>
+      prev.map(r => {
+        if (r.id === targetRoomId) {
+          return {
+            ...r,
+            status: 'occupied',
+            current_guest: {
+              name: booking.guest?.name || guestDetails?.name || 'Guest',
+              phone: booking.guest?.phone || guestDetails?.phone || '',
+              check_in: new Date().toISOString(),
+              check_out: booking.check_out,
+              booking_id: booking.id,
+            },
+          };
+        }
+        return r;
+      })
+    );
+
+    // 3. Persist to Supabase
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('bookings').update({ status: 'checked_in', room_id: targetRoomId, updated_at: new Date().toISOString() }).eq('id', bookingId).then();
+      supabase.from('rooms').update({ status: 'occupied' }).eq('id', targetRoomId).then();
+    }
+  }, [bookings, rooms, logAudit]);
+
+  // Check Out Guest (Marks checked_out, frees room into cleaning)
   const checkOutGuest = useCallback((bookingId: string) => {
     const booking = bookings.find(b => b.id === bookingId);
     if (booking) {
@@ -823,21 +911,30 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       );
 
       // Set Room to Cleaning
-      setRooms(prev =>
-        prev.map(r => {
-          if (r.id === booking.room_id) {
-            return {
-              ...r,
-              status: 'cleaning',
-              current_guest: undefined,
-              pending_orders_count: 0,
-            };
-          }
-          return r;
-        })
-      );
+      if (booking.room_id) {
+        setRooms(prev =>
+          prev.map(r => {
+            if (r.id === booking.room_id) {
+              return {
+                ...r,
+                status: 'cleaning',
+                current_guest: undefined,
+                pending_orders_count: 0,
+              };
+            }
+            return r;
+          })
+        );
+      }
 
       logAudit('CHECK_OUT_GUEST', 'BOOKING', booking.booking_number, { room_id: booking.room_id });
+
+      if (isSupabaseConfigured && supabase) {
+        supabase.from('bookings').update({ status: 'checked_out', updated_at: new Date().toISOString() }).eq('id', bookingId).then();
+        if (booking.room_id) {
+          supabase.from('rooms').update({ status: 'cleaning' }).eq('id', booking.room_id).then();
+        }
+      }
     }
   }, [bookings, logAudit]);
 
@@ -967,8 +1064,11 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         submitUPIPayment,
         verifyPayment,
         rejectPayment,
+        roomTypes,
+        checkAvailability,
         bookings,
         createBooking,
+        allotRoomToBooking,
         checkInGuest,
         checkOutGuest,
         getBookingById,
