@@ -244,14 +244,18 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (roomsRes.data && roomsRes.data.length > 0) {
           setRooms(roomsRes.data);
         }
-        if (bookingsRes.data && bookingsRes.data.length > 0) {
+        if (bookingsRes.data) {
           setBookings(bookingsRes.data);
         }
-        if (ordersRes.data && ordersRes.data.length > 0) {
+        if (ordersRes.data) {
           setOrders(ordersRes.data);
         }
         if (settingsRes.data) {
           setSettings(prev => ({ ...prev, ...settingsRes.data }));
+          if (settingsRes.data.media_config) {
+            setMediaConfig(settingsRes.data.media_config);
+            localStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(settingsRes.data.media_config));
+          }
         }
       } catch (err) {
         console.warn('Supabase initial fetch, continuing with local cache:', err);
@@ -260,7 +264,10 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     fetchCloudData();
 
-    // Listen to real-time database changes across all devices
+    // 1. Live 4-second polling heartbeat (Guarantees multi-device sync even over mobile/cellular connections)
+    const heartbeat = setInterval(fetchCloudData, 4000);
+
+    // 2. Real-time WebSocket subscriptions across all devices
     const channel = client
       .channel('hotel_mapple_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
@@ -275,9 +282,13 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .on('postgres_changes', { event: '*', schema: 'public', table: 'room_types' }, () => {
         fetchCloudData();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => {
+        fetchCloudData();
+      })
       .subscribe();
 
     return () => {
+      clearInterval(heartbeat);
       client.removeChannel(channel);
     };
   }, []);
@@ -297,11 +308,25 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setAuditLogs(prev => [newLog, ...prev]);
   }, []);
 
-  // Update Media Config
+  // Update Media Config (Saves to both LocalStorage AND Supabase Cloud)
   const updateMediaConfig = useCallback((newMedia: Partial<HotelMediaConfig>) => {
     setMediaConfig(prev => {
       const updated = { ...prev, ...newMedia };
       logAudit('UPDATE_MEDIA_CONFIG', 'MEDIA', 'property_assets', updated, prev);
+      localStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(updated));
+
+      // Persist to Cloud Supabase so mobile gets the new logo and photos!
+      if (isSupabaseConfigured && supabase) {
+        supabase
+          .from('settings')
+          .update({
+            media_config: updated,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', 'default')
+          .then();
+      }
+
       return updated;
     });
   }, [logAudit]);
@@ -311,6 +336,11 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSettings(prev => {
       const updated = { ...prev, ...newSettings };
       logAudit('UPDATE_SETTINGS', 'SETTINGS', 'hotel_profile', updated, prev);
+
+      if (isSupabaseConfigured && supabase) {
+        supabase.from('settings').update(updated).eq('id', 'default').then();
+      }
+
       return updated;
     });
   }, [logAudit]);
@@ -715,12 +745,12 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               id: newBooking.guest_id,
               name: newBooking.guest.name,
               phone: newBooking.guest.phone,
-              email: newBooking.guest.email,
-              id_type: newBooking.guest.id_type,
-              id_number: newBooking.guest.id_number,
+              email: newBooking.guest.email || '',
+              id_type: newBooking.guest.id_type || 'ID',
+              id_number: newBooking.guest.id_number || '',
             });
           }
-          await supabase.from('bookings').insert({
+          const { error: bErr } = await supabase.from('bookings').insert({
             id: newBooking.id,
             booking_number: newBooking.booking_number,
             guest_id: newBooking.guest_id,
@@ -738,6 +768,9 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             status: newBooking.status,
             notes: newBooking.notes,
           });
+          if (bErr) {
+            console.error('Supabase booking sync error:', bErr);
+          }
         } catch (err) {
           console.warn('Supabase booking sync error:', err);
         }
