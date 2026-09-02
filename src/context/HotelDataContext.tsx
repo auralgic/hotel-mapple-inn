@@ -91,8 +91,9 @@ interface HotelDataContextType {
   auditLogs: AuditLog[];
   logAudit: (action: string, entityType: string, entityId: string, newData?: any, oldData?: any) => void;
 
-  // Reset demo
+  // Reset demo / wipe mock data
   resetToDemoData: () => void;
+  wipeAllMockData: () => Promise<void>;
 }
 
 const HotelDataContext = createContext<HotelDataContextType | undefined>(undefined);
@@ -208,6 +209,23 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(mediaConfig));
   }, [mediaConfig]);
+
+  // Automated One-Time Clean Slate for Live Operations (Wipes old demo data from browser cache)
+  useEffect(() => {
+    if (localStorage.getItem('mapple_live_clean_slate_v3') !== 'true') {
+      localStorage.removeItem(STORAGE_KEYS.BOOKINGS);
+      localStorage.removeItem(STORAGE_KEYS.ORDERS);
+      localStorage.removeItem(STORAGE_KEYS.PAYMENTS);
+      localStorage.removeItem(STORAGE_KEYS.CHARGES);
+      localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(INITIAL_ROOMS));
+      localStorage.setItem('mapple_live_clean_slate_v3', 'true');
+      setBookings([]);
+      setOrders([]);
+      setPayments([]);
+      setRoomCharges([]);
+      setRooms(INITIAL_ROOMS);
+    }
+  }, []);
 
   // Supabase Cloud Real-Time Sync & Hydration
   useEffect(() => {
@@ -855,6 +873,39 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
   }, []);
 
+  // Wipe All Mock Data from LocalStorage and Cloud Database
+  const wipeAllMockData = useCallback(async () => {
+    // 1. Wipe local state
+    setBookings([]);
+    setOrders([]);
+    setPayments([]);
+    setRoomCharges([]);
+    setRooms(INITIAL_ROOMS);
+
+    // 2. Wipe localStorage
+    localStorage.removeItem(STORAGE_KEYS.BOOKINGS);
+    localStorage.removeItem(STORAGE_KEYS.ORDERS);
+    localStorage.removeItem(STORAGE_KEYS.PAYMENTS);
+    localStorage.removeItem(STORAGE_KEYS.CHARGES);
+    localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(INITIAL_ROOMS));
+
+    // 3. Wipe Cloud Supabase if connected
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('order_items').delete().neq('id', 'placeholder');
+        await supabase.from('orders').delete().neq('id', 'placeholder');
+        await supabase.from('bookings').delete().neq('id', 'placeholder');
+        await supabase.from('payments').delete().neq('id', 'placeholder');
+        await supabase.from('guests').delete().neq('id', 'placeholder');
+        await supabase.from('rooms').update({ status: 'available' }).neq('id', 'placeholder');
+      } catch (err) {
+        console.warn('Supabase cloud purge:', err);
+      }
+    }
+
+    logAudit('WIPE_MOCK_DATA', 'SYSTEM', 'live_purge', { status: 'purged_clean' });
+  }, [logAudit]);
+
   return (
     <HotelDataContext.Provider
       value={{
@@ -893,6 +944,7 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         auditLogs,
         logAudit,
         resetToDemoData,
+        wipeAllMockData,
       }}
     >
       {children}
