@@ -209,6 +209,61 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     localStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(mediaConfig));
   }, [mediaConfig]);
 
+  // Supabase Cloud Real-Time Sync & Hydration
+  useEffect(() => {
+    const client = supabase;
+    if (!isSupabaseConfigured || !client) return;
+
+    const fetchCloudData = async () => {
+      try {
+        const [roomsRes, bookingsRes, ordersRes, settingsRes] = await Promise.all([
+          client.from('rooms').select('*, room_type:room_types(*)').order('room_number'),
+          client.from('bookings').select('*, guest:guests(*), room:rooms(*, room_type:room_types(*))').order('created_at', { ascending: false }),
+          client.from('orders').select('*, items:order_items(*)').order('created_at', { ascending: false }),
+          client.from('settings').select('*').single(),
+        ]);
+
+        if (roomsRes.data && roomsRes.data.length > 0) {
+          setRooms(roomsRes.data);
+        }
+        if (bookingsRes.data && bookingsRes.data.length > 0) {
+          setBookings(bookingsRes.data);
+        }
+        if (ordersRes.data && ordersRes.data.length > 0) {
+          setOrders(ordersRes.data);
+        }
+        if (settingsRes.data) {
+          setSettings(prev => ({ ...prev, ...settingsRes.data }));
+        }
+      } catch (err) {
+        console.warn('Supabase initial fetch, continuing with local cache:', err);
+      }
+    };
+
+    fetchCloudData();
+
+    // Listen to real-time database changes across all devices
+    const channel = client
+      .channel('hotel_mapple_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+        fetchCloudData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchCloudData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
+        fetchCloudData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_types' }, () => {
+        fetchCloudData();
+      })
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, []);
+
   // Log Audit Action
   const logAudit = useCallback((action: string, entityType: string, entityId: string, newData?: any, oldData?: any) => {
     const newLog: AuditLog = {
@@ -258,6 +313,10 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return room;
       })
     );
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('rooms').update({ status }).eq('id', roomId).then();
+    }
   }, [logAudit]);
 
   // Regenerate Room QR
@@ -297,6 +356,10 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return updated;
     });
     logAudit('UPDATE_ROOM_PRICE', 'ROOM_TYPE', roomTypeId, { base_price: newPrice });
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('room_types').update({ base_price: newPrice }).eq('id', roomTypeId).then();
+    }
   }, [logAudit]);
 
   const getRoomByNumber = useCallback((roomNum: string) => {
@@ -436,6 +499,30 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     logAudit('CREATE_FOOD_ORDER', 'ORDER', orderNumber, { total, items_count: cartItems.length, room: room.room_number });
 
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          await supabase.from('orders').insert({
+            id: newOrder.id,
+            order_number: newOrder.order_number,
+            room_id: newOrder.room_id,
+            room_number: newOrder.room_number,
+            guest_name: newOrder.guest_name,
+            guest_phone: newOrder.guest_phone,
+            idempotency_key: newOrder.idempotency_key,
+            subtotal: newOrder.subtotal,
+            tax: newOrder.tax,
+            total: newOrder.total,
+            payment_status: newOrder.payment_status,
+            status: newOrder.status,
+            guest_note: newOrder.guest_note,
+          });
+        } catch (e) {
+          console.warn('Supabase order insert warning:', e);
+        }
+      })();
+    }
+
     return { success: true, order: newOrder };
   }, [rooms, menuItems, settings.taxRate, orders, logAudit]);
 
@@ -454,6 +541,10 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return o;
       })
     );
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('orders').update({ status: newStatus }).eq('id', orderId).then();
+    }
   }, [logAudit]);
 
   const getOrderById = useCallback((orderId: string) => {
@@ -596,6 +687,45 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
     setBookings(prev => [newBooking, ...prev]);
     logAudit('CREATE_BOOKING', 'BOOKING', newBooking.booking_number, newBooking);
+
+    // Sync to Supabase Cloud if configured
+    if (isSupabaseConfigured && supabase) {
+      (async () => {
+        try {
+          if (newBooking.guest) {
+            await supabase.from('guests').upsert({
+              id: newBooking.guest_id,
+              name: newBooking.guest.name,
+              phone: newBooking.guest.phone,
+              email: newBooking.guest.email,
+              id_type: newBooking.guest.id_type,
+              id_number: newBooking.guest.id_number,
+            });
+          }
+          await supabase.from('bookings').insert({
+            id: newBooking.id,
+            booking_number: newBooking.booking_number,
+            guest_id: newBooking.guest_id,
+            room_id: newBooking.room_id,
+            check_in: newBooking.check_in,
+            check_out: newBooking.check_out,
+            adults: newBooking.adults,
+            children: newBooking.children || 0,
+            rate: newBooking.rate,
+            discount: newBooking.discount || 0,
+            tax: newBooking.tax || 0,
+            total: newBooking.total,
+            deposit: newBooking.deposit || 0,
+            source: newBooking.source,
+            status: newBooking.status,
+            notes: newBooking.notes,
+          });
+        } catch (err) {
+          console.warn('Supabase booking sync error:', err);
+        }
+      })();
+    }
+
     return newBooking;
   }, [logAudit]);
 
