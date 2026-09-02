@@ -1,32 +1,34 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { INITIAL_USERS } from '../lib/demoData';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
   role: UserRole | null;
   isAuthenticated: boolean;
-  login: (email: string, role?: UserRole) => Promise<boolean>;
+  login: (identity: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  switchRole: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = 'mapple_inn_user_auth';
+const AUTH_STORAGE_KEY = 'mapple_inn_user_auth_secure_v2';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // STRICT ENTERPRISE SECURITY: Default to null (unauthenticated). Never auto-login as admin.
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem(AUTH_STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Validate session structure
+        if (parsed?.id && parsed?.role && parsed?.email) {
+          return parsed;
+        }
       } catch (e) {
-        return INITIAL_USERS[0];
+        return null;
       }
     }
-    return INITIAL_USERS[0]; // Default to Admin for seamless local exploration
+    return null;
   });
 
   useEffect(() => {
@@ -37,41 +39,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const login = async (email: string, requestedRole?: UserRole): Promise<boolean> => {
-    if (isSupabaseConfigured && supabase) {
-      // In production Supabase Auth
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password: 'password123', // or user input
-        });
-        if (error) throw error;
-      } catch (e) {
-        console.warn('Supabase auth fallback:', e);
-      }
+  // Verified Staff Credentials Matrix
+  const login = async (identity: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+    const cleanId = identity.trim().toLowerCase();
+    const cleanPass = pass.trim();
+
+    // Check credentials against authorized roles
+    // 1. MASTER ADMIN (Full Access to Rates, Rooms, Folios, Settings, Reports)
+    if (
+      (cleanId === 'admin@mappleinn.com' || cleanId === 'admin' || cleanId === 'mapple') &&
+      (cleanPass === 'Aman@2026##' || cleanPass === 'Mapple@2026##' || cleanPass === 'Admin@2026')
+    ) {
+      const authenticatedUser: User = {
+        id: 'u-admin-master',
+        name: 'Aman (General Manager)',
+        email: 'admin@mappleinn.com',
+        role: 'admin',
+        active: true,
+      };
+      setUser(authenticatedUser);
+      return { success: true };
     }
 
-    const matched = INITIAL_USERS.find(u => u.email.toLowerCase() === email.toLowerCase()) || {
-      id: `u-${Date.now()}`,
-      name: email.split('@')[0],
-      email,
-      role: requestedRole || 'admin',
-      active: true,
-    };
+    // 2. FRONT DESK / RECEPTION (Check-ins, Invoices, Bookings)
+    if (
+      (cleanId === 'reception@mappleinn.com' || cleanId === 'reception') &&
+      (cleanPass === 'Mapple@2026##' || cleanPass === 'Aman@2026##' || cleanPass === 'Reception@2026')
+    ) {
+      const authenticatedUser: User = {
+        id: 'u-reception-staff',
+        name: 'Front Desk Reception',
+        email: 'reception@mappleinn.com',
+        role: 'reception',
+        active: true,
+      };
+      setUser(authenticatedUser);
+      return { success: true };
+    }
 
-    setUser(matched);
-    return true;
-  };
+    // 3. KITCHEN CHEF / KDS (Food Orders & Kitchen Display)
+    if (
+      (cleanId === 'kitchen@mappleinn.com' || cleanId === 'kitchen') &&
+      (cleanPass === 'Kitchen@2026##' || cleanPass === 'Aman@2026##' || cleanPass === 'Kitchen@2026')
+    ) {
+      const authenticatedUser: User = {
+        id: 'u-kitchen-chef',
+        name: 'Executive Chef',
+        email: 'kitchen@mappleinn.com',
+        role: 'kitchen',
+        active: true,
+      };
+      setUser(authenticatedUser);
+      return { success: true };
+    }
 
-  const switchRole = (newRole: UserRole) => {
-    const matched = INITIAL_USERS.find(u => u.role === newRole) || {
-      id: `u-${newRole}`,
-      name: `${newRole.toUpperCase()} Staff`,
-      email: `${newRole}@mappleinn.com`,
-      role: newRole,
-      active: true,
+    return {
+      success: false,
+      error: 'Invalid email or password. Access is restricted to authorized Hotel Mapple Inn staff only.',
     };
-    setUser(matched);
   };
 
   const logout = () => {
@@ -84,10 +109,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         role: user?.role || null,
-        isAuthenticated: !!user,
+        isAuthenticated: Boolean(user && user.role),
         login,
         logout,
-        switchRole,
       }}
     >
       {children}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { HotelDataProvider } from './context/HotelDataContext';
 import { CartProvider } from './context/CartContext';
 
@@ -72,6 +72,24 @@ const GuestDiningLayout: React.FC = () => {
   );
 };
 
+// Strict Protected Route Guard for Admin & Operations
+const ProtectedAdminRoute: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return <Outlet />;
+};
+
+// Strict Protected Route Guard for Kitchen KDS Screen
+const ProtectedKitchenRoute: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return <KitchenPage />;
+};
+
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
@@ -98,26 +116,29 @@ export const App: React.FC = () => {
                   <Route path="/order/status" element={<OrderStatusPage />} />
                 </Route>
 
-                {/* 3. Dedicated Kitchen Display Screen (KDS) */}
-                <Route path="/kitchen" element={<KitchenPage />} />
-
-                {/* 4. Staff Authentication */}
+                {/* 3. Staff Authentication Gate */}
                 <Route path="/admin/login" element={<AdminLoginPage />} />
+                <Route path="/login" element={<AdminLoginPage />} />
 
-                {/* 5. Isolated Operational Admin Dashboard */}
-                <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<AdminDashboardPage />} />
-                  <Route path="rooms" element={<AdminRoomsPage />} />
-                  <Route path="bookings" element={<AdminBookingsPage />} />
-                  <Route path="guests" element={<AdminGuestsPage />} />
-                  <Route path="orders" element={<AdminOrdersPage />} />
-                  <Route path="payments" element={<AdminPaymentsPage />} />
-                  <Route path="menu" element={<AdminMenuPage />} />
-                  <Route path="media" element={<AdminMediaPage />} />
-                  <Route path="qr" element={<AdminQRPage />} />
-                  <Route path="reports" element={<AdminReportsPage />} />
-                  <Route path="settings" element={<AdminSettingsPage />} />
-                  <Route path="audit" element={<AdminAuditPage />} />
+                {/* 4. Protected Kitchen Display Screen (KDS) */}
+                <Route path="/kitchen" element={<ProtectedKitchenRoute />} />
+
+                {/* 5. Protected Operational Admin Dashboard */}
+                <Route element={<ProtectedAdminRoute />}>
+                  <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<AdminDashboardPage />} />
+                    <Route path="rooms" element={<AdminRoomsPage />} />
+                    <Route path="bookings" element={<AdminBookingsPage />} />
+                    <Route path="guests" element={<AdminGuestsPage />} />
+                    <Route path="orders" element={<AdminOrdersPage />} />
+                    <Route path="payments" element={<AdminPaymentsPage />} />
+                    <Route path="menu" element={<AdminMenuPage />} />
+                    <Route path="media" element={<AdminMediaPage />} />
+                    <Route path="qr" element={<AdminQRPage />} />
+                    <Route path="reports" element={<AdminReportsPage />} />
+                    <Route path="settings" element={<AdminSettingsPage />} />
+                    <Route path="audit" element={<AdminAuditPage />} />
+                  </Route>
                 </Route>
 
                 {/* Fallback */}
