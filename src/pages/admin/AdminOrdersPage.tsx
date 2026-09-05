@@ -122,55 +122,97 @@ export const AdminOrdersPage: React.FC = () => {
           <table className="w-full text-left text-xs text-neutral-600">
             <thead className="bg-neutral-50 text-neutral-800 uppercase tracking-wider font-semibold border-b border-neutral-200">
               <tr>
-                <th className="px-5 py-3.5">Order #</th>
-                <th className="px-5 py-3.5">Room</th>
-                <th className="px-5 py-3.5">Guest & Items</th>
-                <th className="px-5 py-3.5">Total & Payment</th>
-                <th className="px-5 py-3.5">Preparation Status</th>
-                <th className="px-5 py-3.5">Placed At</th>
-                <th className="px-5 py-3.5 text-right">Actions</th>
+                <th className="px-4 py-3.5 whitespace-nowrap">Order & Room</th>
+                <th className="px-4 py-3.5">Ordered Items & Quantity</th>
+                <th className="px-4 py-3.5 whitespace-nowrap">Guest</th>
+                <th className="px-4 py-3.5 whitespace-nowrap">Total & Pay</th>
+                <th className="px-4 py-3.5 whitespace-nowrap">Status</th>
+                <th className="px-4 py-3.5 whitespace-nowrap">Placed Time</th>
+                <th className="px-4 py-3.5 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 font-medium">
               {filteredOrders.map(o => (
-                <tr key={o.id} className="hover:bg-neutral-50 transition">
-                  <td className="px-5 py-4 font-mono font-bold text-neutral-900">
-                    {o.order_number}
-                  </td>
-
-                  <td className="px-5 py-4">
-                    <span className="bg-neutral-100 font-bold px-2.5 py-1 rounded-lg text-neutral-900">
+                <tr key={o.id} className="hover:bg-amber-50/30 transition">
+                  {/* Order & Room */}
+                  <td className="px-4 py-3.5 align-top">
+                    <div className="font-mono font-bold text-neutral-900 text-xs">{o.order_number}</div>
+                    <span className="inline-block mt-1 bg-amber-100 text-amber-950 font-black px-2.5 py-0.5 rounded-md text-xs border border-amber-300 shadow-xs">
                       Room {o.room_number}
                     </span>
                   </td>
 
-                  <td className="px-5 py-4">
-                    <div className="font-bold text-neutral-900">{o.guest_name}</div>
-                    <div className="text-[11px] text-neutral-500 truncate max-w-xs">
-                      {o.items.map(i => `${i.quantity}x ${i.item_name_snapshot}`).join(', ')}
-                    </div>
+                  {/* High Visibility Food Items & Quantity */}
+                  <td className="px-4 py-3.5 align-top max-w-md">
+                    {o.items && o.items.length > 0 ? (
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap gap-1.5">
+                          {o.items.map((item, idx) => (
+                            <span
+                              key={item.id || idx}
+                              className="inline-flex items-center bg-white text-neutral-900 border border-neutral-300 font-bold px-2.5 py-1 rounded-lg text-xs shadow-xs"
+                            >
+                              <span className="bg-amber-700 text-white font-black px-1.5 py-0.5 rounded text-[11px] mr-1.5 shadow-xs">
+                                {item.quantity}x
+                              </span>
+                              <span className="text-neutral-900">{item.item_name_snapshot}</span>
+                              {item.variant_snapshot && (
+                                <span className="text-amber-800 text-[10px] ml-1 font-semibold">
+                                  ({item.variant_snapshot})
+                                </span>
+                              )}
+                              {item.note && (
+                                <span className="text-neutral-500 italic text-[10px] ml-1">
+                                  — "{item.note}"
+                                </span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Special Guest Cooking Request */}
+                        {o.guest_note && (
+                          <div className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md font-semibold flex items-center space-x-1">
+                            <span>📝 Instruction:</span>
+                            <span className="font-normal italic">"{o.guest_note}"</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-neutral-400 italic text-[11px]">
+                        {o.guest_note || 'Order items recorded in Folio'}
+                      </div>
+                    )}
                   </td>
 
-                  <td className="px-5 py-4">
-                    <div className="font-bold text-neutral-900">{formatCurrency(o.total)}</div>
+                  {/* Guest */}
+                  <td className="px-4 py-3.5 align-top">
+                    <div className="font-bold text-neutral-900">{o.guest_name}</div>
+                    {o.guest_phone && <div className="text-[11px] text-neutral-500 font-mono">{o.guest_phone}</div>}
+                  </td>
+
+                  {/* Total & Payment */}
+                  <td className="px-4 py-3.5 align-top whitespace-nowrap">
+                    <div className="font-bold text-neutral-900 text-xs">{formatCurrency(o.total)}</div>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      className={`inline-block mt-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                         o.payment_status === 'paid'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300'
                       }`}
                     >
-                      {o.payment_status.toUpperCase()}
+                      {o.payment_status === 'paid' ? 'PAID ✓' : 'ROOM FOLIO'}
                     </span>
                   </td>
 
-                  <td className="px-5 py-4">
+                  {/* Preparation Status */}
+                  <td className="px-4 py-3.5 align-top">
                     <select
                       value={o.status}
                       onChange={e => updateOrderStatus(o.id, e.target.value as OrderStatus)}
-                      className="bg-neutral-100 border border-neutral-300 font-semibold text-neutral-800 text-xs py-1 px-2 rounded-lg cursor-pointer outline-none capitalize"
+                      className="bg-neutral-50 hover:bg-white border border-neutral-300 font-bold text-neutral-800 text-xs py-1 px-2 rounded-lg cursor-pointer outline-none capitalize shadow-xs transition"
                     >
-                      <option value="new">New</option>
+                      <option value="new">New (Pending)</option>
                       <option value="preparing">Preparing</option>
                       <option value="ready">Ready</option>
                       <option value="out_for_delivery">Out for Delivery</option>
@@ -179,21 +221,23 @@ export const AdminOrdersPage: React.FC = () => {
                     </select>
                   </td>
 
-                  <td className="px-5 py-4 text-[11px] text-neutral-500">
+                  {/* Placed At */}
+                  <td className="px-4 py-3.5 align-top text-[11px] text-neutral-500 whitespace-nowrap">
                     {formatDateTime(o.created_at)}
                   </td>
 
-                  <td className="px-5 py-4 text-right space-x-2">
+                  {/* Actions */}
+                  <td className="px-4 py-3.5 align-top text-right space-x-1.5 whitespace-nowrap">
                     <button
                       onClick={() => handlePrintKOT(o)}
-                      className="p-1.5 text-neutral-600 hover:text-hotel-700 hover:bg-hotel-50 rounded-lg transition"
+                      className="p-1.5 text-neutral-600 hover:text-hotel-700 hover:bg-hotel-50 rounded-lg transition border border-neutral-200"
                       title="Print KOT Ticket"
                     >
                       <Printer className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setViewOrderModal(o)}
-                      className="bg-hotel-50 text-hotel-700 hover:bg-hotel-100 px-3 py-1.5 rounded-lg font-bold text-xs transition"
+                      className="bg-hotel-50 text-hotel-700 hover:bg-hotel-100 px-3 py-1.5 rounded-lg font-bold text-xs transition border border-hotel-200"
                     >
                       View
                     </button>
@@ -208,7 +252,7 @@ export const AdminOrdersPage: React.FC = () => {
       {/* Order Detail Modal */}
       {viewOrderModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full relative shadow-2xl">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full relative shadow-2xl max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setViewOrderModal(null)}
               className="absolute top-5 right-5 text-neutral-400 hover:text-neutral-700"
@@ -216,44 +260,81 @@ export const AdminOrdersPage: React.FC = () => {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="font-serif text-xl font-bold text-neutral-900 mb-1">
-              Order #{viewOrderModal.order_number}
-            </h3>
+            <div className="flex items-center space-x-2 mb-1">
+              <span className="bg-amber-100 text-amber-950 font-black px-2.5 py-0.5 rounded-md text-xs border border-amber-300">
+                ROOM {viewOrderModal.room_number}
+              </span>
+              <h3 className="font-serif text-xl font-bold text-neutral-900">
+                Order #{viewOrderModal.order_number}
+              </h3>
+            </div>
+            
             <p className="text-xs text-neutral-500 mb-4">
-              Room {viewOrderModal.room_number} • Placed {formatDateTime(viewOrderModal.created_at)}
+              Guest: <strong>{viewOrderModal.guest_name}</strong> {viewOrderModal.guest_phone && `(${viewOrderModal.guest_phone})`} • Placed {formatDateTime(viewOrderModal.created_at)}
             </p>
 
-            <div className="border border-neutral-200 rounded-2xl p-4 divide-y divide-neutral-100 text-xs mb-4">
-              {viewOrderModal.items.map(item => (
-                <div key={item.id} className="py-2 flex justify-between">
-                  <div>
-                    <span className="font-bold text-neutral-900">{item.quantity}x {item.item_name_snapshot}</span>
-                    {item.variant_snapshot && <span className="text-hotel-600 block">Size: {item.variant_snapshot}</span>}
-                    {item.note && <span className="text-neutral-500 italic block">"{item.note}"</span>}
+            <div className="border border-neutral-200 rounded-2xl p-4 divide-y divide-neutral-100 text-xs mb-4 bg-neutral-50/50">
+              <div className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider pb-2">
+                Order Items ({viewOrderModal.items?.length || 0})
+              </div>
+              {viewOrderModal.items && viewOrderModal.items.length > 0 ? (
+                viewOrderModal.items.map((item, idx) => (
+                  <div key={item.id || idx} className="py-2.5 flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="bg-amber-700 text-white font-black px-1.5 py-0.5 rounded text-[11px]">
+                          {item.quantity}x
+                        </span>
+                        <span className="font-bold text-neutral-900 text-xs">{item.item_name_snapshot}</span>
+                      </div>
+                      {item.variant_snapshot && (
+                        <span className="text-amber-800 text-[11px] block mt-0.5 font-semibold">
+                          Variant: {item.variant_snapshot}
+                        </span>
+                      )}
+                      {item.note && (
+                        <span className="text-neutral-500 italic block text-[11px] mt-0.5">
+                          Note: "{item.note}"
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-bold text-neutral-800 text-xs whitespace-nowrap">
+                      {formatCurrency(item.line_total)}
+                    </span>
                   </div>
-                  <span className="font-bold text-neutral-800">{formatCurrency(item.line_total)}</span>
+                ))
+              ) : (
+                <div className="py-3 text-neutral-500 italic text-center">
+                  Items recorded under Folio Charge
                 </div>
-              ))}
+              )}
             </div>
 
-            <div className="space-y-1 text-xs text-neutral-600 mb-6 bg-neutral-50 p-4 rounded-xl">
+            {viewOrderModal.guest_note && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
+                <strong>Guest Special Instructions:</strong>
+                <p className="mt-0.5 italic">"{viewOrderModal.guest_note}"</p>
+              </div>
+            )}
+
+            <div className="space-y-1.5 text-xs text-neutral-600 mb-6 bg-neutral-50 p-4 rounded-xl border border-neutral-200">
               <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(viewOrderModal.subtotal)}</span>
+                <span>Food Subtotal:</span>
+                <span className="font-medium">{formatCurrency(viewOrderModal.subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>GST (5%):</span>
-                <span>{formatCurrency(viewOrderModal.tax)}</span>
+                <span className="font-medium">{formatCurrency(viewOrderModal.tax)}</span>
               </div>
               <div className="flex justify-between text-sm font-bold text-neutral-900 pt-2 border-t border-neutral-200">
-                <span>Total Amount:</span>
-                <span className="text-hotel-700">{formatCurrency(viewOrderModal.total)}</span>
+                <span>Grand Total:</span>
+                <span className="text-hotel-700 font-extrabold">{formatCurrency(viewOrderModal.total)}</span>
               </div>
             </div>
 
             <button
               onClick={() => handlePrintKOT(viewOrderModal)}
-              className="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center space-x-2 transition"
+              className="w-full bg-neutral-900 hover:bg-neutral-800 text-white font-bold py-3 rounded-xl text-xs flex items-center justify-center space-x-2 transition shadow-md"
             >
               <Printer className="w-4 h-4" />
               <span>Print Kitchen KOT Receipt</span>

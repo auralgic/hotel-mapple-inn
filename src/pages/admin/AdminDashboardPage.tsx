@@ -219,8 +219,31 @@ export const AdminDashboardPage: React.FC = () => {
                     <td className="py-3 px-3 font-medium text-neutral-800">
                       {order.guest_name}
                     </td>
-                    <td className="py-3 px-3 text-neutral-600 max-w-xs truncate">
-                      {order.items.map(i => `${i.quantity}x ${i.item_name_snapshot}`).join(', ')}
+                    <td className="py-3 px-3">
+                      <div className="flex flex-wrap gap-1 max-w-sm">
+                        {order.items && order.items.length > 0 ? (
+                          order.items.map((item, idx) => (
+                            <span
+                              key={item.id || idx}
+                              className="inline-flex items-center bg-white text-neutral-900 border border-neutral-300 font-bold px-2 py-0.5 rounded-md text-[11px] shadow-xs"
+                            >
+                              <span className="bg-amber-700 text-white font-black px-1.5 py-0.2 rounded text-[10px] mr-1">
+                                {item.quantity}x
+                              </span>
+                              <span>{item.item_name_snapshot}</span>
+                              {item.variant_snapshot && (
+                                <span className="text-amber-800 text-[9.5px] ml-1">
+                                  ({item.variant_snapshot})
+                                </span>
+                              )}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-neutral-400 italic text-[11px]">
+                            {order.guest_note || 'General Room Dining'}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-3 font-bold text-neutral-900">
                       {formatCurrency(order.total)}

@@ -251,10 +251,11 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const fetchCloudData = async () => {
       try {
-        const [roomsRes, bookingsRes, ordersRes, settingsRes, roomTypesRes] = await Promise.all([
+        const [roomsRes, bookingsRes, ordersRes, orderItemsRes, settingsRes, roomTypesRes] = await Promise.all([
           client.from('rooms').select('*, room_type:room_types(*)').order('room_number'),
           client.from('bookings').select('*, guest:guests(*), room:rooms(*, room_type:room_types(*))').order('created_at', { ascending: false }),
           client.from('orders').select('*, items:order_items(*)').order('created_at', { ascending: false }),
+          client.from('order_items').select('*'),
           client.from('settings').select('*').single(),
           client.from('room_types').select('*'),
         ]);
@@ -273,8 +274,18 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookingsRes.data));
         }
         if (ordersRes.data) {
-          setOrders(ordersRes.data);
-          localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(ordersRes.data));
+          const allOrderItems = orderItemsRes.data || [];
+          const mappedOrders = ordersRes.data.map((ord: any) => {
+            const rawItems = (ord.items && ord.items.length > 0)
+              ? ord.items
+              : allOrderItems.filter((item: any) => item.order_id === ord.id);
+            return {
+              ...ord,
+              items: rawItems || [],
+            };
+          });
+          setOrders(mappedOrders);
+          localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(mappedOrders));
         }
         if (settingsRes.data) {
           setSettings(prev => ({ ...prev, ...settingsRes.data }));
@@ -297,6 +308,9 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         fetchCloudData();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchCloudData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
         fetchCloudData();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
