@@ -1,18 +1,26 @@
 import React from 'react';
 import { CalendarCheck, MessageSquare, Phone } from 'lucide-react';
+import { useHotelData } from '../../context/HotelDataContext';
 
 interface PersistentMobileBarProps {
   onOpenBookingModal: () => void;
 }
 
 export const PersistentMobileBar: React.FC<PersistentMobileBarProps> = ({ onOpenBookingModal }) => {
+  const { roomTypes, rooms } = useHotelData();
+  const lowestPrice = Math.min(
+    ...roomTypes.map(rt => rt.base_price),
+    ...rooms.map(r => r.room_type?.base_price || 2200),
+    2200
+  );
+
   return (
     <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-[#e5ded4] p-2.5 z-40 sm:hidden shadow-2xl mobile-sticky-bar text-neutral-900">
       <div className="flex items-center justify-between gap-2">
         {/* Rate context */}
         <div className="pl-1">
           <span className="text-[10px] text-neutral-500 block uppercase font-semibold leading-none">From</span>
-          <span className="font-bold text-sm text-neutral-950 leading-tight">₹2,200</span>
+          <span className="font-bold text-sm text-neutral-950 leading-tight">₹{lowestPrice.toLocaleString('en-IN')}</span>
           <span className="text-[9px] text-neutral-500 block leading-none">/ night</span>
         </div>
 

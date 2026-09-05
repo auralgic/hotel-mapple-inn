@@ -80,13 +80,14 @@ export const AdminDashboardPage: React.FC = () => {
             New Reservation
           </Link>
           <Link
-            to="/admin/payments"
-            className="bg-hotel-600 hover:bg-hotel-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow transition flex items-center space-x-1.5"
+            to="/admin/orders"
+            className="bg-amber-600 hover:bg-amber-500 text-neutral-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow transition flex items-center space-x-1.5"
           >
-            <span>Verify UPI Payments</span>
-            {pendingPayments.length > 0 && (
-              <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                {pendingPayments.length}
+            <UtensilsCrossed className="w-4 h-4" />
+            <span>Food Orders (KOT)</span>
+            {pendingOrdersCount > 0 && (
+              <span className="bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {pendingOrdersCount}
               </span>
             )}
           </Link>

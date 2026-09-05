@@ -13,8 +13,12 @@ interface MarriottHeroProps {
 }
 
 export const MarriottHero: React.FC<MarriottHeroProps> = ({ onSearch }) => {
-  const { rooms } = useHotelData();
+  const { rooms, roomTypes } = useHotelData();
   const availableCount = rooms.filter(r => r.status === 'available').length;
+
+  const deluxePrice = roomTypes.find(rt => rt.id === 'rt-deluxe')?.base_price || 2200;
+  const superDeluxePrice = roomTypes.find(rt => rt.id === 'rt-super-deluxe')?.base_price || 2800;
+  const executivePrice = roomTypes.find(rt => rt.id === 'rt-executive')?.base_price || 3800;
 
   const today = new Date().toISOString().slice(0, 10);
   const tomorrow = new Date(Date.now() + 24 * 60 * 60000).toISOString().slice(0, 10);
@@ -72,10 +76,10 @@ export const MarriottHero: React.FC<MarriottHeroProps> = ({ onSearch }) => {
                 onChange={e => setAdults(Number(e.target.value))}
                 className="bg-transparent text-white text-xs font-medium focus:outline-none w-full cursor-pointer"
               >
-                <option value={1} className="bg-neutral-900 text-white">1 Room, 1 Guest</option>
-                <option value={2} className="bg-neutral-900 text-white">1 Room, 2 Guests</option>
-                <option value={3} className="bg-neutral-900 text-white">1 Room, 3 Guests</option>
-                <option value={4} className="bg-neutral-900 text-white">1 Suite, 4 Guests</option>
+                <option value={1} className="bg-neutral-900 text-white">1 Guest</option>
+                <option value={2} className="bg-neutral-900 text-white">2 Guests</option>
+                <option value={3} className="bg-neutral-900 text-white">3 Guests</option>
+                <option value={4} className="bg-neutral-900 text-white">4 Guests</option>
               </select>
             </div>
 
@@ -88,9 +92,9 @@ export const MarriottHero: React.FC<MarriottHeroProps> = ({ onSearch }) => {
                 className="bg-transparent text-white text-xs font-medium focus:outline-none w-full cursor-pointer"
               >
                 <option value="all" className="bg-neutral-900 text-white">All 16 Rooms</option>
-                <option value="rt-deluxe" className="bg-neutral-900 text-white">Deluxe (₹2,200)</option>
-                <option value="rt-super-deluxe" className="bg-neutral-900 text-white">Super Deluxe (₹2,800)</option>
-                <option value="rt-executive" className="bg-neutral-900 text-white">Executive Suite (₹3,800)</option>
+                <option value="rt-deluxe" className="bg-neutral-900 text-white">Deluxe (₹{deluxePrice.toLocaleString('en-IN')})</option>
+                <option value="rt-super-deluxe" className="bg-neutral-900 text-white">Super Deluxe (₹{superDeluxePrice.toLocaleString('en-IN')})</option>
+                <option value="rt-executive" className="bg-neutral-900 text-white">Executive Suite (₹{executivePrice.toLocaleString('en-IN')})</option>
               </select>
             </div>
 

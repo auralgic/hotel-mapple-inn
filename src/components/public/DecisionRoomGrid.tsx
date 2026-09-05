@@ -12,12 +12,12 @@ export const DecisionRoomGrid: React.FC<{
   onDirectBook: (roomTypeId: string) => void;
   onOpenMatcherQuiz?: () => void;
 }> = ({ onDirectBook, onOpenMatcherQuiz }) => {
-  const { mediaConfig, rooms } = useHotelData();
+  const { mediaConfig, rooms, roomTypes } = useHotelData();
   const [selectedDrawerRoom, setSelectedDrawerRoom] = useState<RoomCategoryData | null>(null);
 
-  const deluxePrice = rooms.find(r => r.room_type_id === 'rt-deluxe')?.room_type?.base_price || 2200;
-  const superDeluxePrice = rooms.find(r => r.room_type_id === 'rt-super-deluxe')?.room_type?.base_price || 2800;
-  const executivePrice = rooms.find(r => r.room_type_id === 'rt-executive')?.room_type?.base_price || 3800;
+  const deluxePrice = roomTypes.find(rt => rt.id === 'rt-deluxe')?.base_price || rooms.find(r => r.room_type_id === 'rt-deluxe')?.room_type?.base_price || 2200;
+  const superDeluxePrice = roomTypes.find(rt => rt.id === 'rt-super-deluxe')?.base_price || rooms.find(r => r.room_type_id === 'rt-super-deluxe')?.room_type?.base_price || 2800;
+  const executivePrice = roomTypes.find(rt => rt.id === 'rt-executive')?.base_price || rooms.find(r => r.room_type_id === 'rt-executive')?.room_type?.base_price || 3800;
 
   const roomCategories: RoomCategoryData[] = [
     {

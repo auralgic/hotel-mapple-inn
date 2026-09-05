@@ -41,7 +41,6 @@ export const AdminLayout: React.FC = () => {
     { label: 'Guests', path: '/admin/guests', icon: Users },
     { label: 'Food Orders', path: '/admin/orders', icon: UtensilsCrossed, badge: newOrdersCount },
     { label: 'Kitchen Board', path: '/kitchen', icon: ChefHat, external: true },
-    { label: 'Payment Verifier', path: '/admin/payments', icon: CreditCard, badge: pendingPaymentsCount },
     { label: 'Menu Editor', path: '/admin/menu', icon: BookOpen },
     { label: 'Media & Images', path: '/admin/media', icon: Image },
     { label: '16 Room QRs', path: '/admin/qr', icon: QrCode },

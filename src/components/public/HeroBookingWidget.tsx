@@ -13,8 +13,12 @@ interface HeroBookingWidgetProps {
 }
 
 export const HeroBookingWidget: React.FC<HeroBookingWidgetProps> = ({ onSearch }) => {
-  const { rooms } = useHotelData();
+  const { rooms, roomTypes } = useHotelData();
   const availableCount = rooms.filter(r => r.status === 'available').length;
+
+  const deluxePrice = roomTypes.find(rt => rt.id === 'rt-deluxe')?.base_price || 2200;
+  const superDeluxePrice = roomTypes.find(rt => rt.id === 'rt-super-deluxe')?.base_price || 2800;
+  const executivePrice = roomTypes.find(rt => rt.id === 'rt-executive')?.base_price || 3800;
 
   const today = new Date().toISOString().slice(0, 10);
   const tomorrow = new Date(Date.now() + 24 * 60 * 60000).toISOString().slice(0, 10);
@@ -100,9 +104,9 @@ export const HeroBookingWidget: React.FC<HeroBookingWidgetProps> = ({ onSearch }
               className="w-full bg-[#faf8f5] hover:bg-white text-xs sm:text-sm font-semibold text-neutral-800 px-3.5 py-2.5 rounded-xl border border-hotel-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hotel-600 transition cursor-pointer"
             >
               <option value="all">Any Room (16 Rooms)</option>
-              <option value="rt-deluxe">Deluxe Room (₹2,200)</option>
-              <option value="rt-super-deluxe">Super Deluxe (₹2,800)</option>
-              <option value="rt-executive">Executive Suite (₹3,800)</option>
+              <option value="rt-deluxe">Deluxe Room (₹{deluxePrice.toLocaleString('en-IN')})</option>
+              <option value="rt-super-deluxe">Super Deluxe (₹{superDeluxePrice.toLocaleString('en-IN')})</option>
+              <option value="rt-executive">Executive Suite (₹{executivePrice.toLocaleString('en-IN')})</option>
             </select>
           </div>
 

@@ -251,21 +251,30 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const fetchCloudData = async () => {
       try {
-        const [roomsRes, bookingsRes, ordersRes, settingsRes] = await Promise.all([
+        const [roomsRes, bookingsRes, ordersRes, settingsRes, roomTypesRes] = await Promise.all([
           client.from('rooms').select('*, room_type:room_types(*)').order('room_number'),
           client.from('bookings').select('*, guest:guests(*), room:rooms(*, room_type:room_types(*))').order('created_at', { ascending: false }),
           client.from('orders').select('*, items:order_items(*)').order('created_at', { ascending: false }),
           client.from('settings').select('*').single(),
+          client.from('room_types').select('*'),
         ]);
+
+        if (roomTypesRes.data && roomTypesRes.data.length > 0) {
+          setRoomTypes(roomTypesRes.data);
+          localStorage.setItem('mapple_inn_room_types_v1', JSON.stringify(roomTypesRes.data));
+        }
 
         if (roomsRes.data && roomsRes.data.length > 0) {
           setRooms(roomsRes.data);
+          localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(roomsRes.data));
         }
         if (bookingsRes.data) {
           setBookings(bookingsRes.data);
+          localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(bookingsRes.data));
         }
         if (ordersRes.data) {
           setOrders(ordersRes.data);
+          localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(ordersRes.data));
         }
         if (settingsRes.data) {
           setSettings(prev => ({ ...prev, ...settingsRes.data }));
@@ -590,10 +599,26 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             subtotal: newOrder.subtotal,
             tax: newOrder.tax,
             total: newOrder.total,
-            payment_status: newOrder.payment_status,
+            payment_status: 'pending',
             status: newOrder.status,
             guest_note: newOrder.guest_note,
           });
+
+          if (finalizedOrderItems.length > 0) {
+            const itemsPayload = finalizedOrderItems.map(item => ({
+              id: item.id,
+              order_id: newOrder.id,
+              menu_item_id: item.menu_item_id,
+              item_name_snapshot: item.item_name_snapshot,
+              unit_price_snapshot: item.unit_price_snapshot,
+              variant_snapshot: item.variant_snapshot || null,
+              quantity: item.quantity,
+              tax_rate_snapshot: item.tax_rate_snapshot,
+              line_total: item.line_total,
+              note: item.note || null,
+            }));
+            await supabase.from('order_items').insert(itemsPayload);
+          }
         } catch (e) {
           console.warn('Supabase order insert warning:', e);
         }
