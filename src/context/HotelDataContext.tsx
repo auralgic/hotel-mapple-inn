@@ -142,7 +142,10 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return saved ? JSON.parse(saved) : INITIAL_ROOMS;
   });
 
-  const [roomTypes] = useState<RoomType[]>(INITIAL_ROOM_TYPES);
+  const [roomTypes, setRoomTypes] = useState<RoomType[]>(() => {
+    const saved = localStorage.getItem('mapple_inn_room_types_v1');
+    return saved ? JSON.parse(saved) : INITIAL_ROOM_TYPES;
+  });
 
   // 3. Categories & Menu Items
   const [categories, setCategories] = useState<MenuCategory[]>(() => {
@@ -397,8 +400,16 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return newToken;
   }, [logAudit]);
 
-  // Update Room Price
+  // Update Room Price (Updates both roomTypes, rooms, localStorage, and Supabase cloud)
   const updateRoomPrice = useCallback((roomTypeId: string, newPrice: number) => {
+    // 1. Update roomTypes state
+    setRoomTypes(prev => {
+      const updated = prev.map(rt => (rt.id === roomTypeId ? { ...rt, base_price: newPrice } : rt));
+      localStorage.setItem('mapple_inn_room_types_v1', JSON.stringify(updated));
+      return updated;
+    });
+
+    // 2. Update rooms state
     setRooms(prev => {
       const updated = prev.map(room => {
         if (room.room_type_id === roomTypeId || room.room_type?.id === roomTypeId) {
@@ -413,10 +424,12 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(updated));
       return updated;
     });
+
     logAudit('UPDATE_ROOM_PRICE', 'ROOM_TYPE', roomTypeId, { base_price: newPrice });
 
+    // 3. Persist to Cloud Supabase
     if (isSupabaseConfigured && supabase) {
-      supabase.from('room_types').update({ base_price: newPrice }).eq('id', roomTypeId).then();
+      supabase.from('room_types').update({ base_price: newPrice, updated_at: new Date().toISOString() }).eq('id', roomTypeId).then();
     }
   }, [logAudit]);
 
@@ -522,14 +535,19 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const finalizedOrderItems = orderItems.map(item => ({ ...item, order_id: orderId }));
 
+    const activeBooking = bookings.find(
+      b => (b.room_id === room.id || b.allotted_room_number === room.room_number) && b.status === 'checked_in'
+    );
+    const bookingId = room.current_guest?.booking_id || activeBooking?.id;
+
     const newOrder: Order = {
       id: orderId,
       order_number: orderNumber,
       room_id: room.id,
       room_number: room.room_number,
-      booking_id: room.current_guest?.booking_id,
-      guest_name: guestName || room.current_guest?.name || 'In-Room Guest',
-      guest_phone: guestPhone || room.current_guest?.phone || '',
+      booking_id: bookingId,
+      guest_name: guestName || room.current_guest?.name || activeBooking?.guest?.name || `Guest Room ${room.room_number}`,
+      guest_phone: guestPhone || room.current_guest?.phone || activeBooking?.guest?.phone || '',
       guest_session_id: `sess-${room.room_number}-${Date.now()}`,
       idempotency_key: idempotencyKey,
       items: finalizedOrderItems,
@@ -537,7 +555,8 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       tax,
       discount: 0,
       total,
-      payment_status: 'pending_verification',
+      payment_method: 'room_folio',
+      payment_status: 'posted_to_room',
       status: 'new',
       guest_note: guestNote,
       created_at: new Date().toISOString(),
@@ -790,20 +809,37 @@ export const HotelDataProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return newBooking;
   }, [logAudit]);
 
-  // Dynamic Room Availability Engine (Evaluates actual date ranges across existing bookings)
+  // Dynamic Room Availability Engine (Evaluates actual date ranges across existing bookings and operable rooms)
   const checkAvailability = useCallback((checkInDate: string, checkOutDate: string, roomTypeId?: string) => {
-    const matchingRooms = roomTypeId && roomTypeId !== 'all'
-      ? rooms.filter(r => r.room_type_id === roomTypeId)
-      : rooms;
+    const s2 = (checkInDate || '').slice(0, 10);
+    const e2 = (checkOutDate || '').slice(0, 10);
+
+    // 1. Filter operable physical rooms (exclude maintenance)
+    const matchingRooms = rooms.filter(r => {
+      if (r.status === 'maintenance') return false;
+      if (roomTypeId && roomTypeId !== 'all') {
+        return r.room_type_id === roomTypeId || r.room_type?.id === roomTypeId;
+      }
+      return true;
+    });
     const totalRooms = matchingRooms.length;
 
+    // 2. Count active overlapping bookings for this category
     const overlappingBookings = bookings.filter(b => {
       if (b.status === 'cancelled' || b.status === 'checked_out') return false;
       if (roomTypeId && roomTypeId !== 'all') {
-        const matchesType = (b.room_type_id === roomTypeId) || (b.room?.room_type_id === roomTypeId);
+        const matchesType =
+          b.room_type_id === roomTypeId ||
+          b.room?.room_type_id === roomTypeId ||
+          b.room_type?.id === roomTypeId;
         if (!matchesType) return false;
       }
-      return b.check_in < checkOutDate && b.check_out > checkInDate;
+      const s1 = (b.check_in || '').slice(0, 10);
+      const e1 = (b.check_out || '').slice(0, 10);
+      if (!s1 || !e1 || !s2 || !e2) return false;
+
+      // Strict interval overlap: s1 < e2 && e1 > s2
+      return s1 < e2 && e1 > s2;
     });
 
     const bookedCount = overlappingBookings.length;

@@ -41,28 +41,28 @@ export const OrderStatusPage: React.FC = () => {
   // Define steps
   const steps: { key: string; label: string; description: string; icon: any }[] = [
     {
-      key: 'payment_verification',
-      label: 'Payment Verification',
-      description: order.payment_status === 'paid' ? 'Verified by Staff' : 'Checking UPI Reference with Bank',
-      icon: ShieldCheck,
+      key: 'confirmed',
+      label: 'Order Confirmed',
+      description: `Billed to Room #${order.room_number} Folio (Pay at Check-Out)`,
+      icon: CheckCircle2,
     },
     {
       key: 'preparing',
       label: 'Kitchen Preparing',
-      description: 'Chef is freshly preparing your dishes',
+      description: 'Chef is freshly cooking in our dedicated kitchen',
       icon: Utensils,
     },
     {
       key: 'ready',
-      label: 'Ready & Packed',
-      description: 'Plated hot and dispatched to your floor',
+      label: 'Ready & Dispatched',
+      description: `Plated hot and on the way to Floor #${order.room_number[0] || '2'}`,
       icon: Clock,
     },
     {
       key: 'delivered',
       label: 'Delivered',
-      description: 'Enjoy your meal in Room ' + order.room_number,
-      icon: CheckCircle2,
+      description: `Enjoy your meal in Room ${order.room_number}`,
+      icon: Sparkles,
     },
   ];
 
@@ -70,9 +70,8 @@ export const OrderStatusPage: React.FC = () => {
   const getStepState = (stepIndex: number) => {
     // Determine overall progress index 0-3
     let currentIdx = 0;
-    if (order.status === 'new' && order.payment_status !== 'paid') currentIdx = 0;
-    else if (order.status === 'confirmed' || order.status === 'accepted' || (order.payment_status === 'paid' && order.status === 'new')) currentIdx = 1;
-    else if (order.status === 'preparing') currentIdx = 1;
+    if (order.status === 'new') currentIdx = 0;
+    else if (order.status === 'preparing' || order.status === 'confirmed' || order.status === 'accepted') currentIdx = 1;
     else if (order.status === 'ready' || order.status === 'out_for_delivery') currentIdx = 2;
     else if (order.status === 'delivered') currentIdx = 3;
 

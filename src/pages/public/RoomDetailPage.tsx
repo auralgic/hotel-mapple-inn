@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ROOM_CATEGORIES_DATA, RoomCategoryData } from '../../lib/roomCategories';
 import { DirectBookingModal } from '../../components/public/DirectBookingModal';
 import { formatCurrency } from '../../lib/formatters';
+import { useHotelData } from '../../context/HotelDataContext';
 import {
   Check,
   CalendarCheck,
@@ -20,8 +21,10 @@ import {
 export const RoomDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { rooms, roomTypes } = useHotelData();
 
   const room: RoomCategoryData = ROOM_CATEGORIES_DATA.find((r: RoomCategoryData) => r.slug === slug) || ROOM_CATEGORIES_DATA[0];
+  const livePrice = rooms.find(r => r.room_type_id === room.id)?.room_type?.base_price || roomTypes.find(rt => rt.id === room.id)?.base_price || room.price;
 
   const [activePhotoIdx, setActivePhotoIdx] = useState<number>(0);
   const [bookingModalOpen, setBookingModalOpen] = useState<boolean>(false);
@@ -64,7 +67,7 @@ export const RoomDetailPage: React.FC = () => {
               <span className="text-[11px] text-neutral-500 block uppercase">Best Direct Rate:</span>
               <div className="flex items-baseline space-x-1">
                 <span className="text-3xl font-bold text-neutral-950">
-                  {formatCurrency(room.price)}
+                  {formatCurrency(livePrice)}
                 </span>
                 <span className="text-xs text-neutral-500">/ night</span>
               </div>

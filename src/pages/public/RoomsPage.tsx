@@ -6,16 +6,20 @@ import { DirectBookingModal } from '../../components/public/DirectBookingModal';
 import { PersistentMobileBar } from '../../components/public/PersistentMobileBar';
 
 export const RoomsPage: React.FC = () => {
-  const { settings, rooms } = useHotelData();
+  const { settings, rooms, roomTypes } = useHotelData();
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [selectedRoomParams, setSelectedRoomParams] = useState<any>(undefined);
+
+  const deluxePrice = rooms.find(r => r.room_type_id === 'rt-deluxe')?.room_type?.base_price || roomTypes.find(rt => rt.id === 'rt-deluxe')?.base_price || 2200;
+  const superDeluxePrice = rooms.find(r => r.room_type_id === 'rt-super-deluxe')?.room_type?.base_price || roomTypes.find(rt => rt.id === 'rt-super-deluxe')?.base_price || 2800;
+  const executivePrice = rooms.find(r => r.room_type_id === 'rt-executive')?.room_type?.base_price || roomTypes.find(rt => rt.id === 'rt-executive')?.base_price || 3800;
 
   const roomCategories = [
     {
       id: 'rt-deluxe',
       name: 'Deluxe Room',
       tagline: 'Ideal for solo & business travelers',
-      price: 2200,
+      price: deluxePrice,
       size: '22–25 m²',
       occupancy: 'Max 2 Guests',
       bed: 'King Size Bed',
@@ -38,7 +42,7 @@ export const RoomsPage: React.FC = () => {
       id: 'rt-super-deluxe',
       name: 'Super Deluxe Room',
       tagline: 'Extra space with scenic private balcony view',
-      price: 2800,
+      price: superDeluxePrice,
       size: '28–32 m²',
       occupancy: 'Max 3 Guests',
       bed: 'King Bed + Extra Mat option',
@@ -61,7 +65,7 @@ export const RoomsPage: React.FC = () => {
       id: 'rt-executive',
       name: 'Executive Suite',
       tagline: 'Top-floor luxury suite with separate living room',
-      price: 3800,
+      price: executivePrice,
       size: '42–45 m²',
       occupancy: 'Max 4 Guests',
       bed: 'King Bed + Living Area Sofa Set',

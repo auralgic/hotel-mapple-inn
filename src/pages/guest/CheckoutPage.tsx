@@ -59,7 +59,7 @@ export const CheckoutPage: React.FC = () => {
 
       if (res.success && res.order) {
         clearCart();
-        navigate(`/order/payment?orderId=${res.order.id}`);
+        navigate(`/order/status/${res.order.id}`);
       } else {
         setErrorMsg(res.error || 'Failed to place order. Please try again.');
         setIsSubmitting(false);
@@ -197,9 +197,20 @@ export const CheckoutPage: React.FC = () => {
             </div>
           </div>
 
+          {/* In-House Guest Billing Info */}
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-xs space-y-1.5">
+            <div className="flex items-center space-x-2 text-amber-900 font-bold">
+              <CheckCircle className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>Billed to Room #{roomNumber} Folio (Pay at Check-Out)</span>
+            </div>
+            <p className="text-neutral-600 text-[11px] leading-relaxed">
+              This food order total will be automatically added to your room bill. You can settle the consolidated payment at the front desk when checking out.
+            </p>
+          </div>
+
           {/* Trust Badge */}
-          <div className="flex items-center space-x-2 text-xs text-neutral-500 bg-hotel-50/50 p-3 rounded-xl border border-hotel-100">
-            <ShieldCheck className="w-4 h-4 text-hotel-600 shrink-0" />
+          <div className="flex items-center space-x-2 text-xs text-neutral-500 bg-neutral-100/80 p-3 rounded-xl border border-neutral-200">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
               Pure Vegetarian preparation guaranteed • Delivered hot & fresh to your room in 15–20 mins.
             </span>
@@ -209,7 +220,7 @@ export const CheckoutPage: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-hotel-600 hover:bg-hotel-700 disabled:bg-neutral-400 text-white font-bold py-3.5 rounded-xl text-sm shadow-md transition flex items-center justify-center space-x-2"
+            className="w-full bg-amber-600 hover:bg-amber-700 disabled:bg-neutral-400 text-neutral-950 font-bold py-3.5 rounded-xl text-sm shadow-md transition flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
           >
             {isSubmitting ? (
               <>
@@ -219,7 +230,7 @@ export const CheckoutPage: React.FC = () => {
             ) : (
               <>
                 <CheckCircle className="w-4 h-4" />
-                <span>Confirm Order & Proceed to Pay ({formatCurrency(totalAmount)})</span>
+                <span>Place Order & Add to Room Bill ({formatCurrency(totalAmount)})</span>
               </>
             )}
           </button>

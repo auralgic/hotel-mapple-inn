@@ -117,7 +117,7 @@ export interface MenuItem {
 }
 
 export type OrderStatus = 'new' | 'confirmed' | 'accepted' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled';
-export type PaymentStatus = 'pending' | 'pending_verification' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = 'pending' | 'pending_verification' | 'paid' | 'failed' | 'refunded' | 'posted_to_room';
 
 export interface OrderItem {
   id: string;
@@ -148,6 +148,7 @@ export interface Order {
   tax: number;
   discount: number;
   total: number;
+  payment_method?: string;
   payment_status: PaymentStatus;
   status: OrderStatus;
   guest_note?: string;

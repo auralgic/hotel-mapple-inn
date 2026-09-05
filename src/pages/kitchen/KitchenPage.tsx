@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useHotelData } from '../../context/HotelDataContext';
 import { formatTime, formatCurrency } from '../../lib/formatters';
 import { Order, OrderStatus } from '../../types';
@@ -14,6 +15,8 @@ import {
   ArrowRight,
   Flame,
   CheckCheck,
+  LayoutDashboard,
+  Home,
 } from 'lucide-react';
 
 export const KitchenPage: React.FC = () => {
@@ -82,7 +85,25 @@ export const KitchenPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          {/* Navigation to Dashboard */}
+          <Link
+            to="/admin"
+            className="flex items-center space-x-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 hover:text-white px-3 py-1.5 rounded-xl text-xs font-semibold border border-neutral-800 transition"
+          >
+            <LayoutDashboard className="w-4 h-4 text-amber-400" />
+            <span>Admin Dashboard</span>
+          </Link>
+
+          {/* Navigation to Home */}
+          <Link
+            to="/"
+            className="flex items-center space-x-1.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 hover:text-white px-3 py-1.5 rounded-xl text-xs font-semibold border border-neutral-800 transition"
+          >
+            <Home className="w-4 h-4 text-amber-400" />
+            <span>Website</span>
+          </Link>
+
           {/* Audio Chime Toggle */}
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
@@ -93,11 +114,11 @@ export const KitchenPage: React.FC = () => {
             }`}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-400" /> : <VolumeX className="w-4 h-4" />}
-            <span>Audio Alert: {soundEnabled ? 'ON' : 'OFF'}</span>
+            <span>Audio: {soundEnabled ? 'ON' : 'OFF'}</span>
           </button>
 
           <div className="bg-neutral-900 px-3 py-1.5 rounded-xl border border-neutral-800 text-xs text-neutral-300">
-            Active Orders: <strong className="text-white">{newOrders.length + preparingOrders.length + readyOrders.length}</strong>
+            Active: <strong className="text-white">{newOrders.length + preparingOrders.length + readyOrders.length}</strong>
           </div>
         </div>
       </div>

@@ -122,11 +122,30 @@ export const AdminBookingsPage: React.FC = () => {
     setNotes('');
   };
 
+  const isRoomOverlapping = (roomId: string, checkInDate: string, checkOutDate: string, excludeBookingId?: string) => {
+    const s2 = (checkInDate || '').slice(0, 10);
+    const e2 = (checkOutDate || '').slice(0, 10);
+    if (!s2 || !e2) return false;
+
+    return bookings.some(b => {
+      if (b.id === excludeBookingId) return false;
+      if (b.status === 'cancelled' || b.status === 'checked_out') return false;
+      if (b.room_id !== roomId && b.allotted_room_number !== rooms.find(r => r.id === roomId)?.room_number) return false;
+
+      const s1 = (b.check_in || '').slice(0, 10);
+      const e1 = (b.check_out || '').slice(0, 10);
+      return s1 < e2 && e1 > s2;
+    });
+  };
+
   const openAllotModal = (booking: Booking) => {
     setAllotModalBooking(booking);
-    // Find first available physical room that matches category (or any available room)
+    // Find first available physical room that matches category, not in maintenance, and not overlapping
     const matchingAvailable = rooms.find(
-      r => (!booking.room_type_id || r.room_type_id === booking.room_type_id) && r.status === 'available'
+      r =>
+        (!booking.room_type_id || r.room_type_id === booking.room_type_id) &&
+        r.status !== 'maintenance' &&
+        !isRoomOverlapping(r.id, booking.check_in, booking.check_out, booking.id)
     );
     setSelectedRoomIdToAllot(matchingAvailable?.id || '');
   };
@@ -395,14 +414,26 @@ export const AdminBookingsPage: React.FC = () => {
                 <option value="">-- Choose Physical Room --</option>
                 {rooms
                   .filter(r => !allotModalBooking.room_type_id || r.room_type_id === allotModalBooking.room_type_id)
-                  .map(r => (
-                    <option key={r.id} value={r.id}>
-                      Room {r.room_number} (Floor {r.floor}) — {r.room_type?.name} [{r.status.toUpperCase()}]
-                    </option>
-                  ))}
+                  .map(r => {
+                    const isUnderMaintenance = r.status === 'maintenance';
+                    const isBooked = isRoomOverlapping(r.id, allotModalBooking.check_in, allotModalBooking.check_out, allotModalBooking.id);
+                    const isUnavailable = isUnderMaintenance || isBooked;
+
+                    let statusLabel = 'Available for Dates';
+                    if (isUnderMaintenance) statusLabel = '⚠️ Maintenance (Unavailable)';
+                    else if (isBooked) statusLabel = '🔴 Booked for selected dates';
+                    else if (r.status === 'occupied') statusLabel = 'Occupied now (Available for these future dates)';
+                    else statusLabel = '🟢 Available for selected dates';
+
+                    return (
+                      <option key={r.id} value={r.id} disabled={isUnavailable} className={isUnavailable ? 'text-neutral-400 bg-neutral-100' : 'text-neutral-900 font-bold'}>
+                        Room {r.room_number} (Floor {r.floor}) — {r.room_type?.name} [{statusLabel}]
+                      </option>
+                    );
+                  })}
               </select>
               <span className="text-[11px] text-neutral-500 block">
-                Assigning an available room will lock it for this guest.
+                Assigning an available room will lock it for this guest across their stay dates.
               </span>
             </div>
 
@@ -490,16 +521,28 @@ export const AdminBookingsPage: React.FC = () => {
                   <select
                     value={selectedPhysicalRoomId}
                     onChange={e => setSelectedPhysicalRoomId(e.target.value)}
-                    className="w-full text-xs px-3 py-2 border border-neutral-300 focus:outline-none focus:border-amber-700 cursor-pointer"
+                    className="w-full text-xs px-3 py-2 border border-neutral-300 focus:outline-none focus:border-amber-700 cursor-pointer font-medium"
                   >
                     <option value="">-- Allot Later at Check-In --</option>
                     {rooms
-                      .filter(r => r.room_type_id === selectedRoomTypeId && r.status === 'available')
-                      .map(r => (
-                        <option key={r.id} value={r.id}>
-                          Room {r.room_number} (Floor {r.floor}) [Available]
-                        </option>
-                      ))}
+                      .filter(r => r.room_type_id === selectedRoomTypeId)
+                      .map(r => {
+                        const isUnderMaintenance = r.status === 'maintenance';
+                        const isBooked = isRoomOverlapping(r.id, checkIn, checkOut);
+                        const isUnavailable = isUnderMaintenance || isBooked;
+
+                        let statusLabel = 'Available for Dates';
+                        if (isUnderMaintenance) statusLabel = '⚠️ Maintenance';
+                        else if (isBooked) statusLabel = '🔴 Booked for selected dates';
+                        else if (r.status === 'occupied') statusLabel = 'Occupied now (Available for dates)';
+                        else statusLabel = '🟢 Available';
+
+                        return (
+                          <option key={r.id} value={r.id} disabled={isUnavailable} className={isUnavailable ? 'text-neutral-400 bg-neutral-100' : 'text-neutral-900 font-bold'}>
+                            Room {r.room_number} (Floor {r.floor}) [{statusLabel}]
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
               </div>
